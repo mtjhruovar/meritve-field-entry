@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f172a">
+  <title>Meritve inštalacij</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --line: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --acc: #38bdf8;
+      --ok: #22c55e;
+      --bad: #f43f5e;
+      --skip: #64748b;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    header { position: sticky; top: 0; background: var(--bg); padding: 12px 16px 8px; border-bottom: 1px solid var(--line); z-index: 2; }
+    h1 { font-size: 1.05rem; margin: 0; }
+    header p { margin: 2px 0 0; color: var(--muted); font-size: .85rem; }
+    nav { display: flex; gap: 6px; padding: 8px 12px 12px; position: sticky; top: 58px; background: var(--bg); z-index: 2; overflow-x: auto; }
+    nav button, .btn {
+      appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--text);
+      border-radius: 999px; padding: 10px 14px; font-size: .9rem;
+    }
+    nav button.active { background: var(--acc); color: #0f172a; border-color: var(--acc); font-weight: 600; }
+    .btn.primary { background: var(--acc); color: #0f172a; border-color: var(--acc); font-weight: 600; }
+    .btn.full { width: 100%; margin-top: 10px; }
+    main { padding: 12px 16px 96px; }
+    section { display: none; }
+    section.active { display: block; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
+    label { display: block; color: var(--muted); font-size: .78rem; margin: 10px 0 4px; }
+    input, select, textarea {
+      width: 100%; background: #0b1220; color: var(--text); border: 1px solid var(--line);
+      border-radius: 12px; padding: 12px; font-size: 1rem;
+    }
+    textarea { min-height: 80px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .list button.item {
+      width: 100%; text-align: left; margin-bottom: 8px; border-radius: 14px; padding: 12px;
+    }
+    .circuit-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: stretch; }
+    .circuit-row .item { flex: 1; margin-bottom: 0; }
+    .circuit-row .item.editing { outline: 2px solid var(--acc); }
+    .btn.danger {
+      border-color: #9f1239; color: #fecdd3; background: #3f1d2a;
+      border-radius: 14px; padding: 12px 14px; min-width: 72px;
+    }
+    .item small { color: var(--muted); display: block; }
+    .seg { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .seg button { padding: 12px; border-radius: 12px; }
+    .seg button.on-da { background: var(--ok); color: #052e16; border-color: var(--ok); }
+    .seg button.on-ne { background: var(--bad); color: #fff; border-color: var(--bad); }
+    .seg button.on-slash { background: var(--skip); color: #fff; border-color: var(--skip); }
+    .visual-item { margin-bottom: 14px; }
+    .visual-item p { margin: 0 0 8px; font-size: .92rem; }
+    h2 { font-size: 1rem; margin: 0 0 8px; }
+    .muted { color: var(--muted); font-size: .85rem; }
+    #toast {
+      position: fixed; left: 16px; right: 16px; bottom: 16px; background: #022c22; color: #bbf7d0;
+      border-radius: 12px; padding: 12px; display: none; text-align: center;
+    }
+    .checks label { display: flex; align-items: center; gap: 10px; color: var(--text); font-size: .95rem; margin: 10px 0; }
+    .checks input { width: 22px; height: 22px; flex: none; accent-color: var(--acc); }
+    .bill-summary { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+    .bill-row { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: .95rem; }
+    .bill-row span { color: var(--muted); }
+    .bill-row.total { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 1.05rem; }
+    .bill-row.total span { color: var(--text); font-weight: 600; }
+    .bill-row.total strong { color: var(--acc); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Meritve električnih inštalacij</h1>
+    <p id="subtitle">Vnos na terenu — deluje tudi brez računalnika in Wi‑Fi</p>
+  </header>
+  <nav>
+    <button data-tab="job" class="active">Objekt</button>
+    <button data-tab="boards">Razdelilniki</button>
+    <button data-tab="measure">Meritve</button>
+    <button data-tab="visual">Pregled</button>
+    <button data-tab="io">Izvoz</button>
+  </nav>
+  <main>
+    <section id="job" class="active">
+      <div class="card">
+        <h2>Podatki o pregledu</h2>
+        <label>Datum meritev</label>
+        <input type="date" id="date">
+        <div class="row">
+          <div><label>Št. poročila</label><input id="report_number" placeholder="12/2026"></div>
+          <div>
+            <label>Vrsta pregleda</label>
+            <select id="inspection_kind">
+              <option value="first">prvi</option>
+              <option value="periodic" selected>periodični</option>
+              <option value="repeat">ponovni</option>
+            </select>
+          </div>
+        </div>
+        <label>Kraj</label>
+        <input id="place">
+        <label>Naziv objekta</label>
+        <input id="site_name">
+        <label>Naslov</label>
+        <input id="site_address">
+        <label>Naročnik</label>
+        <input id="client_name">
+        <label>Št. in datum izdaje gradbenega dovoljenja</label>
+        <input id="building_permit" placeholder="351-1018/2016/22, 10.06.2015 ali /">
+        <label>Razpoložljiva dokumentacija o objektu</label>
+        <input id="documentation" placeholder="/">
+        <div class="row">
+          <div>
+            <label>Zahtevnost objekta</label>
+            <select id="object_class">
+              <option value="manj_zahteven">manj zahteven</option>
+              <option value="zahteven">zahteven</option>
+            </select>
+          </div>
+          <div><label>Naslednji pregled čez (let)</label><input id="next_inspection_years" inputmode="numeric" placeholder="16"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Električna oskrba z energijo</h2>
+        <div class="row">
+          <div>
+            <label>Sistem ozemljitve</label>
+            <select id="earthing_system">
+              <option>TT</option><option selected>TN-C-S</option><option>TN-C</option><option>TN-S</option><option>IT</option>
+            </select>
+          </div>
+          <div><label>RPE (Ω)</label><input id="rpe_ohm" inputmode="decimal"></div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Faze</label>
+            <select id="phases"><option>1</option><option selected>3</option></select>
+          </div>
+          <div><label>Gl. varovalka</label><input id="main_fuse" placeholder="3x25 A"></div>
+        </div>
+        <div class="row">
+          <div><label>R združenih ozemljil (Ω)</label><input id="r_combined_ohm" inputmode="decimal"></div>
+          <div><label>Mesto merjenja</label><input id="measure_point" placeholder="GIP"></div>
+        </div>
+        <label>Način napajanja</label>
+        <select id="feed">
+          <option value="air">po zraku</option>
+          <option value="underground" selected>po zemlji</option>
+          <option value="combined">kombinirano</option>
+        </select>
+        <label>Samodejni izklop napajanja z</label>
+        <div class="checks">
+          <label><input type="checkbox" id="prot_overcurrent"> nadtokovno zaščito</label>
+          <label><input type="checkbox" id="prot_rcd"> zaščitno napravo na diferenčni tok (RCD)</label>
+          <label><input type="checkbox" id="prot_voltage"> napetostno zaščitno napravo</label>
+        </div>
+        <input id="prot_other" placeholder="drugo …">
+        <label>Drugo v objektu</label>
+        <div class="checks">
+          <label><input type="checkbox" id="extra_transformer"> transformatorska postaja</label>
+          <label><input type="checkbox" id="extra_genset"> agregat</label>
+          <label><input type="checkbox" id="extra_ups"> UPS nad 41 kVA</label>
+          <label><input type="checkbox" id="extra_pv"> sončna elektrarna</label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Ozemljitve</h2>
+        <div class="checks">
+          <label><input type="checkbox" id="potential_ring"> izdelan potencialni obroč</label>
+        </div>
+        <div class="row">
+          <div>
+            <label>Vrsta ozemljila</label>
+            <select id="earth_type">
+              <option value="strip">tračno</option>
+              <option value="rod">palično</option>
+              <option value="ring">ozem. obroč</option>
+              <option value="other">drugo</option>
+            </select>
+          </div>
+          <div>
+            <label>Material</label>
+            <select id="earth_material">
+              <option>FeZn</option><option>Cu</option><option>Rf</option><option value="other">drugo</option>
+            </select>
+          </div>
+        </div>
+        <label>Presek ozemljila</label>
+        <input id="earth_cross_section" placeholder="4x25 mm2">
+        <div class="row">
+          <div>
+            <label>Vreme</label>
+            <select id="weather">
+              <option value="sunny">sončno</option>
+              <option value="partly_sunny">delno sončno</option>
+              <option value="cloudy">oblačno</option>
+              <option value="rain">padavine</option>
+              <option value="other">drugo</option>
+            </select>
+          </div>
+          <div>
+            <label>Površina zemlje</label>
+            <select id="ground">
+              <option value="dry">suha</option>
+              <option value="wet">vlažna</option>
+              <option value="partly_wet">delno vlažna</option>
+              <option value="frozen">zmrznjena</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Instrument</h2>
+        <div class="row">
+          <div><label>Št. instrumenta</label><input id="instrument_serial" inputmode="numeric"></div>
+          <div><label>Kalibracija velja do</label><input type="date" id="calibration_valid_to"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="boards">
+      <div class="card">
+        <h2>Razdelilniki</h2>
+        <p class="muted">Najprej dodaj razdelilnik (RP, RK …), nato RCD-je na njem.</p>
+        <label>Oznaka razdelilnika</label>
+        <input id="new_board" placeholder="RP">
+        <button class="btn primary full" id="add_board">Dodaj razdelilnik</button>
+        <div id="board_list" class="list" style="margin-top:12px"></div>
+      </div>
+      <div class="card" id="rcd_card" hidden>
+        <h2>RCD na <span id="rcd_board_name"></span></h2>
+        <div class="row">
+          <div><label>Oznaka</label><input id="rcd_id" placeholder="RCD-1"></div>
+          <div><label>Znamka</label><input id="rcd_brand" placeholder="SCHRACK"></div>
+        </div>
+        <div class="row3">
+          <div>
+            <label>In (A)</label>
+            <select id="rcd_in">
+              <option value="">—</option>
+              <option>16</option>
+              <option>20</option>
+              <option>25</option>
+              <option>32</option>
+              <option>40</option>
+              <option>50</option>
+              <option>63</option>
+            </select>
+          </div>
+          <div><label>IΔn (A)</label><input id="rcd_idn" inputmode="decimal" placeholder="0.03"></div>
+          <div><label>Faze</label><select id="rcd_phases"><option>1</option><option selected>3</option></select></div>
+        </div>
+        <div class="row3">
+          <div><label>Tip</label><select id="rcd_type"><option>AC</option><option selected>A</option><option>B</option></select></div>
+          <div><label>G/S</label><select id="rcd_delay"><option selected>G</option><option>S</option></select></div>
+          <div><label>Uc (V)</label><input id="rcd_uc" inputmode="decimal"></div>
+        </div>
+        <div class="row3">
+          <div><label>IΔ izm (mA)</label><input id="rcd_idm" inputmode="decimal"></div>
+          <div><label>t1× (ms)</label><input id="rcd_t1" inputmode="decimal"></div>
+          <div><label>t5× (ms)</label><input id="rcd_t5" inputmode="decimal"></div>
+        </div>
+        <label>Zin (Ω) / Ik</label>
+        <input id="rcd_zin" placeholder="0,38-0,42">
+        <button class="btn primary full" id="add_rcd">Shrani RCD</button>
+        <button class="btn full" id="new_rcd">Nov RCD</button>
+        <p class="muted" id="edit_hint_rcd" hidden>Urejaš obstoječi RCD. Shrani, da potrdiš spremembe, ali izberi Nov RCD.</p>
+      </div>
+      <div class="card" id="rcd_list_card" hidden>
+        <h2>Shranjeni RCD</h2>
+        <div id="rcd_list" class="list"></div>
+      </div>
+    </section>
+
+    <section id="measure">
+      <div class="card">
+        <h2>Tokokrog</h2>
+        <label>Razdelilnik</label>
+        <select id="circuit_board"></select>
+        <div class="row">
+          <div><label>Prostor</label><input id="c_room" placeholder="Kuhinja"></div>
+          <div><label>Št.</label><input id="c_no" inputmode="numeric"></div>
+        </div>
+        <label>Vrsta porabnika / tokokroga</label>
+        <select id="c_kind">
+          <option value="socket_1p" data-phases="1">Vtičnica 1f</option>
+          <option value="socket_3p" data-phases="3">Vtičnica 3f</option>
+          <option value="lighting" data-phases="1">Razsvetljava</option>
+          <option value="load_3p" data-phases="3">3-fazni porabnik</option>
+          <option value="cooker" data-phases="3">Štedilnik / peč</option>
+          <option value="ac" data-phases="1">Klimatska naprava</option>
+          <option value="water_heater" data-phases="1">Bojler</option>
+          <option value="bonding" data-phases="1">Kovinska masa / izenačitev</option>
+          <option value="other" data-phases="1">Drugo</option>
+        </select>
+        <div class="row">
+          <div>
+            <label>Faze</label>
+            <select id="c_phases">
+              <option value="1">1-fazno</option>
+              <option value="3">3-fazno</option>
+            </select>
+          </div>
+          <div><label>Dodaten opis</label><input id="c_desc" placeholder="nad pultom, pečnica …"></div>
+        </div>
+        <label>Pot (RP/RCD-1/F1) — prazno = samodejna oznaka</label>
+        <input id="c_path" placeholder="RP/F1">
+        <div class="row3">
+          <div><label>R izen. (Ω)</label><input id="c_r" inputmode="decimal"></div>
+          <div><label>Zin (Ω)</label><input id="c_zin" inputmode="decimal"></div>
+          <div><label>Ik (A)</label><input id="c_ik" inputmode="decimal"></div>
+        </div>
+        <div class="row3">
+          <div><label>Zipe (Ω)</label><input id="c_zipe" inputmode="decimal"></div>
+          <div><label>IK (A)</label><input id="c_ikpe" inputmode="decimal"></div>
+          <div><label>Uc (V)</label><input id="c_uc" inputmode="decimal"></div>
+        </div>
+        <div class="row3">
+          <div>
+            <label>Presek vodnika (mm²)</label>
+            <select id="c_mm">
+              <option value="">—</option>
+              <option value="1,5">1,5</option>
+              <option value="2,5">2,5</option>
+              <option value="4">4</option>
+              <option value="6">6</option>
+              <option value="10">10</option>
+              <option value="16">16</option>
+              <option value="25">25</option>
+            </select>
+          </div>
+          <div>
+            <label>Kar.</label>
+            <select id="c_prot">
+              <option value="">—</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+              <option value="D">D</option>
+              <option value="NV">NV</option>
+              <option value="IO">IO</option>
+            </select>
+          </div>
+          <div>
+            <label>In (A)</label>
+            <select id="c_in">
+              <option value="">—</option>
+              <option>6</option>
+              <option>10</option>
+              <option>13</option>
+              <option>16</option>
+              <option>20</option>
+              <option>25</option>
+              <option>32</option>
+              <option>40</option>
+              <option>50</option>
+              <option>63</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div><label>tiz (s)</label><input id="c_trip" inputmode="decimal"></div>
+          <div><label>X/Y porabniki</label><input id="c_xy" placeholder="4/4"></div>
+        </div>
+        <h2 style="margin-top:16px">Izolacija Riso (MΩ)</h2>
+        <div class="row3">
+          <div><label>N-PE</label><input id="i_npe" placeholder=">30"></div>
+          <div><label>L1-PE</label><input id="i_l1pe"></div>
+          <div><label>L1-N</label><input id="i_l1n"></div>
+        </div>
+        <div id="iso_3f">
+          <p class="muted">3-fazni tokokrog — dodatne meritve L2 / L3</p>
+          <div class="row3">
+            <div><label>L2-PE</label><input id="i_l2pe"></div>
+            <div><label>L2-N</label><input id="i_l2n"></div>
+            <div><label>L3-PE</label><input id="i_l3pe"></div>
+          </div>
+          <div class="row3">
+            <div><label>L3-N</label><input id="i_l3n"></div>
+            <div><label>L1-L2</label><input id="i_l1l2"></div>
+            <div><label>L1-L3</label><input id="i_l1l3"></div>
+          </div>
+          <div class="row">
+            <div><label>L2-L3</label><input id="i_l2l3"></div>
+          </div>
+        </div>
+        <button class="btn primary full" id="save_circuit">Shrani tokokrog</button>
+        <button class="btn full" id="new_circuit">Nov tokokrog</button>
+        <p class="muted" id="edit_hint" hidden>Urejaš obstoječi tokokrog. Shrani, da potrdiš spremembe, ali izberi Nov tokokrog.</p>
+      </div>
+      <div class="card">
+        <h2>Shranjeni tokokrogi</h2>
+        <div id="circuit_list" class="list"></div>
+      </div>
+    </section>
+
+    <section id="visual">
+      <div class="card">
+        <label>Razdelilnik</label>
+        <select id="visual_board"></select>
+        <div id="visual_list"></div>
+      </div>
+    </section>
+
+    <section id="io">
+      <div class="card">
+        <h2>Račun</h2>
+        <p class="muted">Cena glede na število tokokrogov. Privzeto: 180 € (do 20) + 5 € na dodatni tokokrog. Cene so brez DDV.</p>
+        <div class="row">
+          <div><label>Osnova (€)</label><input id="bill_base" inputmode="decimal" value="180"></div>
+          <div><label>Vključeni tokokrogi</label><input id="bill_included" inputmode="numeric" value="20"></div>
+        </div>
+        <div class="row">
+          <div><label>Dodatek / tokokrog (€)</label><input id="bill_extra" inputmode="decimal" value="5"></div>
+          <div><label>Popust (€)</label><input id="bill_discount" inputmode="decimal" value="0"></div>
+        </div>
+        <label>Opomba (npr. potni stroški)</label>
+        <input id="bill_note" placeholder="Po dogovoru …">
+        <div id="bill_summary" class="bill-summary"></div>
+      </div>
+      <div class="card">
+        <h2>Izvoz / uvoz</h2>
+        <p class="muted">Podatki ostanejo na telefonu. Po meritevah: <strong>Prenesi JSON</strong> in datoteko daj v <code>data/jobs/</code> na računalniku, nato sestavi PDF.</p>
+        <p class="muted" id="install_hint">Na iPhone: Share → Add to Home Screen. Potem forma deluje tudi offline.</p>
+        <button class="btn primary full" id="export_btn">Prenesi JSON</button>
+        <button class="btn full" id="save_server">Shrani na računalnik (samo če teče lokalni strežnik)</button>
+        <label>Uvozi JSON</label>
+        <input type="file" id="import_file" accept="application/json,.json">
+        <button class="btn full" id="reset_job">Nov prazen objekt</button>
+      </div>
+    </section>
+  </main>
+  <div id="toast"></div>
+  <script src="app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      // Check for a new deploy whenever the app comes to the foreground, and
+      // reload once the new version takes over (job data is kept in localStorage).
+      const hadController = Boolean(navigator.serviceWorker.controller);
+      let reloading = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!hadController || reloading) return;
+        reloading = true;
+        try { saveJob(); } catch (err) { console.warn(err); }
+        location.reload();
+      });
+      navigator.serviceWorker.register("./sw.js").then((reg) => {
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") reg.update();
+        });
+      });
+    }
+  </script>
+</body>
+</html>
